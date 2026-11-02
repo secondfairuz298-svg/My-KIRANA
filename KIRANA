@@ -1,1 +1,447 @@
 
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KIRANA - Konseling Interaktif, Rekapitulasi, Asesmen & Naungan Aman</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#5D4037">
+  <meta name="description" content="Platform Bimbingan Konseling Sekolah & Direktori Konselor Profesional Independen">
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22KIRANA%22%2C%22short_name%22%3A%22KIRANA%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23FDFBF7%22%2C%22theme_color%22%3A%22%235D4037%22%7D">
+
+  <!-- Lucide Icons & Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QR Code Generator Lib -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: {
+              50: '#FDFCF7',
+              100: '#F9F5EC',
+              200: '#F3EBD8',
+              300: '#E8DCBF',
+              400: '#DECBA5'
+            },
+            cocoa: {
+              500: '#8D6E63',
+              600: '#6D4C41',
+              700: '#5D4037',
+              800: '#4E342E',
+              900: '#3E2723'
+            },
+            terracotta: '#D35400',
+            sage: '#607274'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #FDFCF7;
+      color: #3E2723;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #DECBA5;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cocoa-500 selection:text-white">
+
+  <!-- ================= NOTIFIKASI TOAST GLOBAL ================= -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform transition-all duration-300 translate-y-[-100px] opacity-0 bg-cocoa-800 text-cream-50 px-5 py-3 rounded-xl shadow-xl flex items-center space-x-3 border border-cocoa-600">
+    <i id="toast-icon" data-lucide="bell" class="w-5 h-5 text-cream-300"></i>
+    <span id="toast-message" class="text-sm font-medium">Notifikasi</span>
+  </div>
+
+  <!-- ================= NAVBAR ================= -->
+  <header class="bg-cream-100 border-b border-cream-300 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('home')">
+        <div class="w-10 h-10 rounded-full bg-cocoa-700 flex items-center justify-center text-cream-100 font-bold shadow">
+          <i data-lucide="heart-handshake" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-xl font-black tracking-wider text-cocoa-800">KIRANA</span>
+          <p class="text-[10px] text-cocoa-600 font-semibold tracking-tighter uppercase">Konseling, Rekapitulasi & Asesmen</p>
+        </div>
+      </div>
+
+      <div id="nav-actions" class="flex items-center space-x-3">
+        <!-- Injected via JavaScript based on session -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN ROUTER CONTAINER ================= -->
+  <main id="app-container" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+    <!-- Konten halaman dinamis dimuat di sini -->
+  </main>
+
+  <!-- ================= MODAL GLOBAL (ROOM/VIDEO/CALL) ================= -->
+  <div id="modal-container" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-content" class="bg-cream-50 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-cream-300 max-h-[90vh] overflow-y-auto custom-scroll relative">
+      <!-- Diisi secara dinamis -->
+    </div>
+  </div>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="bg-cream-200 border-t border-cream-300 py-6 text-center text-xs text-cocoa-600">
+    <p class="font-medium">© 2026 KIRANA — Ruang Aman, Pulih, dan Tumbuh Bersama.</p>
+    <p class="mt-1 text-[11px] text-cocoa-500">PWA Ready • Dapat diinstal langsung di Android, iOS, & Desktop.</p>
+  </footer>
+
+  <!-- ================= APPLICATION LOGIC ENGINE ================= -->
+  <script>
+    // --- DATABASE MOCK & PERSISTENCE (LocalStorage) ---
+    const DB_KEY = "KIRANA_DATA_STORE_V1";
+    const SESSION_KEY = "KIRANA_ACTIVE_USER";
+
+    function getDB() {
+      const defaultDB = {
+        users: [
+          {
+            email: "gurubk@kirana.sch.id",
+            name: "Dra. Siti Rahmah, M.Psi.",
+            role: "guru_bk",
+            photo: "",
+            isAlsoCounselor: true,
+            counselorBio: "Berpengalaman 12+ tahun dalam bimbingan karir, dinamika keluarga, dan krisis remaja.",
+            counselorRate: "Rp 150.000 / Sesi",
+            portfolio: ["Sertifikasi Konselor Remaja ABKIN 2024", "Jurnal Penanganan Bullying 2023"],
+            rooms: [
+              { id: "ROOM-10A", name: "Kelas X-IPA 1", code: "KIRANA-10A" },
+              { id: "ROOM-10B", name: "Kelas X-IPA 2", code: "KIRANA-10B" },
+              { id: "ROOM-11A", name: "Kelas XI-IPS 1", code: "KIRANA-11A" },
+              { id: "ROOM-12A", name: "Kelas XII-IPA 1", code: "KIRANA-12A" },
+              { id: "ROOM-12B", name: "Kelas XII-IPS 2", code: "KIRANA-12B" }
+            ],
+            schedules: []
+          },
+          {
+            email: "konselor@kirana.id",
+            name: "Budi Santoso, S.Psi., M.A.",
+            role: "konselor",
+            photo: "",
+            counselorBio: "Spesialis Cognitive Behavioral Therapy (CBT), kecemasan sosial, dan manajemen stres kerja.",
+            counselorRate: "Rp 200.000 / Sesi",
+            portfolio: ["Lisensi HIMPSI No. 4921/2022", "Jurnal Regulasi Emosi Dewasa Muda (2024)"],
+            schedules: []
+          },
+          {
+            email: "siswa@kirana.sch.id",
+            name: "Andi Pratama",
+            nisn: "0088921201",
+            role: "siswa",
+            photo: "",
+            joinedRoomCode: "KIRANA-10A",
+            points: 100,
+            pointHistory: [
+              { date: "2026-10-15", change: "+10", reason: "Juara 2 Lomba Debat Bahasa", by: "Dra. Siti Rahmah" },
+              { date: "2026-10-28", change: "-15", reason: "Terlambat apel pagi 3 kali berturut-turut", by: "Dra. Siti Rahmah" }
+            ],
+            peerPhotos: [],
+            assessmentResults: { mbti: "ENFJ", talent: "Verbal-Linguistik & Sosial", learningStyle: "Kinestetik & Auditori" }
+          },
+          {
+            email: "klien@gmail.com",
+            name: "Rina Maharani",
+            role: "klien",
+            photo: "",
+            assessmentResults: { mbti: "INFJ", mentalHealth: "Stres Ringan (Kelelahan Kerja)" }
+          }
+        ],
+        meetings: [
+          { id: "CONF-890", name: "Sesi Parenting & Mental Remaja", pass: "kirana123", host: "Dra. Siti Rahmah, M.Psi." }
+        ],
+        chatMessages: []
+      };
+
+      const stored = localStorage.getItem(DB_KEY);
+      if (!stored) {
+        localStorage.setItem(DB_KEY, JSON.stringify(defaultDB));
+        return defaultDB;
+      }
+      return JSON.parse(stored);
+    }
+
+    function saveDB(db) {
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+    }
+
+    function getCurrentUser() {
+      const email = localStorage.getItem(SESSION_KEY);
+      if (!email) return null;
+      const db = getDB();
+      return db.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+    }
+
+    function setCurrentUser(email) {
+      localStorage.setItem(SESSION_KEY, email);
+    }
+
+    function clearSession() {
+      localStorage.removeItem(SESSION_KEY);
+    }
+
+    // --- TOAST HELPER ---
+    function showToast(message, icon = "bell") {
+      const toast = document.getElementById("toast");
+      const msg = document.getElementById("toast-message");
+      const ico = document.getElementById("toast-icon");
+      msg.innerText = message;
+      ico.setAttribute("data-lucide", icon);
+      lucide.createIcons();
+
+      toast.classList.remove("translate-y-[-100px]", "opacity-0");
+      setTimeout(() => {
+        toast.classList.add("translate-y-[-100px]", "opacity-0");
+      }, 4000);
+    }
+
+    // --- ROUTER & NAVIGATION ---
+    function navigateTo(view, params = {}) {
+      const container = document.getElementById("app-container");
+      const user = getCurrentUser();
+      renderNavbar(user);
+
+      switch(view) {
+        case "auth":
+          renderAuthView(container);
+          break;
+        case "profile":
+          renderProfileView(container, user);
+          break;
+        case "directory":
+          renderDirectoryView(container, user);
+          break;
+        case "conference":
+          renderConferenceView(container, user);
+          break;
+        case "direct_chat":
+          renderDirectChatView(container, user, params.targetEmail);
+          break;
+        case "home":
+        default:
+          if (!user) {
+            renderLandingView(container);
+          } else if (user.role === "guru_bk") {
+            renderGuruBKDashboard(container, user);
+          } else if (user.role === "siswa") {
+            renderSiswaDashboard(container, user);
+          } else if (user.role === "konselor") {
+            renderKonselorDashboard(container, user);
+          } else if (user.role === "klien") {
+            renderKlienDashboard(container, user);
+          }
+          break;
+      }
+      lucide.createIcons();
+      window.scrollTo(0, 0);
+    }
+
+    function renderNavbar(user) {
+      const navActions = document.getElementById("nav-actions");
+      if (!user) {
+        navActions.innerHTML = `
+          <button onclick="navigateTo('auth')" class="px-4 py-2 text-sm font-semibold text-cream-50 bg-cocoa-700 hover:bg-cocoa-800 rounded-lg shadow transition">
+            Masuk / Daftar
+          </button>
+        `;
+      } else {
+        const avatar = user.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=8D6E63&textColor=FDFBF7`;
+        navActions.innerHTML = `
+          <button onclick="navigateTo('conference')" title="Ruang Meeting Daring" class="p-2 text-cocoa-700 hover:bg-cream-200 rounded-lg transition">
+            <i data-lucide="video" class="w-5 h-5"></i>
+          </button>
+          <button onclick="navigateTo('directory')" title="Cari Konselor" class="p-2 text-cocoa-700 hover:bg-cream-200 rounded-lg transition">
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </button>
+          <div onclick="navigateTo('profile')" class="flex items-center space-x-2 cursor-pointer bg-cream-200/60 p-1.5 rounded-full hover:bg-cream-300/50 transition">
+            <img src="${avatar}" alt="avatar" class="w-7 h-7 rounded-full object-cover border border-cocoa-600">
+            <span class="text-xs font-semibold text-cocoa-800 hidden sm:inline pr-2">${user.name.split(' ')[0]}</span>
+          </div>
+          <button onclick="logout()" title="Keluar" class="p-2 text-red-700 hover:bg-red-50 rounded-lg transition">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+          </button>
+        `;
+      }
+      lucide.createIcons();
+    }
+
+    // --- LANDING PAGE ---
+    function renderLandingView(container) {
+      container.innerHTML = `
+        <div class="py-12 px-4 max-w-4xl mx-auto text-center space-y-8">
+          <div class="inline-flex items-center space-x-2 bg-cream-200 px-4 py-1.5 rounded-full text-xs font-semibold text-cocoa-800">
+            <i data-lucide="shield-check" class="w-4 h-4 text-cocoa-700"></i>
+            <span>Ruang Konseling & Naungan Psikologis Terintegrasi</span>
+          </div>
+          <h1 class="text-4xl sm:text-5xl font-black text-cocoa-900 leading-tight">
+            Kesejahteraan Mental & Karakter Sekolah Dalam Satu Sentuhan.
+          </h1>
+          <p class="text-base sm:text-lg text-cocoa-600 max-w-2xl mx-auto">
+            KIRANA menghubungkan Guru BK, Siswa, Konselor Profesional Mandiri, dan Masyarakat Umum dalam ekosistem konseling yang aman, hangat, serta mudah diakses.
+          </p>
+          <div class="flex flex-wrap justify-center gap-4 pt-4">
+            <button onclick="navigateTo('auth')" class="px-7 py-3.5 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 font-bold rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+              Mulai Sekarang (Gratis)
+            </button>
+            <button onclick="navigateTo('directory')" class="px-7 py-3.5 bg-cream-200 hover:bg-cream-300 text-cocoa-800 font-bold rounded-xl border border-cream-400 transition">
+              Cari Konselor Terdaftar
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-12 text-left">
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="school" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Guru BK & Siswa</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Room kelas otomatis, barcode scanner masuk kelas, gamifikasi poin keaktifan, dan rekapitulasi poin pelanggaran/prestasi.</p>
+            </div>
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="brain-circuit" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Asesmen Terstandar</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Tes Kepribadian (MBTI), Minat & Bakat, Rekomendasi Cara Belajar, serta Tes Kesehatan Mental komprehensif.</p>
+            </div>
+            <div class="bg-cream-100 p-6 rounded-2xl border border-cream-300">
+              <i data-lucide="badge-dollar-sign" class="w-8 h-8 text-cocoa-700 mb-3"></i>
+              <h3 class="font-bold text-cocoa-800 mb-1">Konselor Mandiri & Red Card</h3>
+              <p class="text-xs text-cocoa-600 leading-relaxed">Direktori terbuka untuk umum, transparansi tarif layanan, portofolio ilmiah, serta opsi peran ganda untuk Guru BK.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- AUTHENTICATION VIEW ---
+    function renderAuthView(container) {
+      container.innerHTML = `
+        <div class="max-w-md mx-auto bg-cream-100 p-8 rounded-2xl border border-cream-300 shadow-md">
+          <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-cocoa-900">Masuk / Pendaftaran</h2>
+            <p class="text-xs text-cocoa-600 mt-1">Cukup masukkan email Anda. Akun Anda tersimpan secara otomatis dan persisten.</p>
+          </div>
+
+          <form id="auth-form" onsubmit="handleAuth(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Peran Pengguna</label>
+              <select id="auth-role" onchange="toggleAuthFields()" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+                <option value="guru_bk">Guru BK (Sekolah)</option>
+                <option value="siswa">Siswa</option>
+                <option value="konselor">Konselor Independen</option>
+                <option value="klien">Klien Umum</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Nama Lengkap & Gelar</label>
+              <input type="text" id="auth-name" required placeholder="Contoh: Sarah Azhari, M.Psi." class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <div id="field-nisn" class="hidden">
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Nomor Induk (NISN/NIM)</label>
+              <input type="text" id="auth-nisn" placeholder="Contoh: 009871625" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-cocoa-700 uppercase mb-1">Alamat Email</label>
+              <input type="email" id="auth-email" required placeholder="nama@email.com" class="w-full bg-cream-50 border border-cream-400 rounded-lg p-2.5 text-sm text-cocoa-800 focus:outline-cocoa-600">
+            </div>
+
+            <button type="submit" class="w-full py-3 bg-cocoa-700 hover:bg-cocoa-800 text-cream-50 font-bold rounded-lg shadow transition mt-2">
+              Lanjutkan Masuk / Buat Akun
+            </button>
+          </form>
+        </div>
+      `;
+    }
+
+    function toggleAuthFields() {
+      const role = document.getElementById("auth-role").value;
+      const nisnField = document.getElementById("field-nisn");
+      if (role === "siswa") {
+        nisnField.classList.remove("hidden");
+      } else {
+        nisnField.classList.add("hidden");
+      }
+    }
+
+    function handleAuth(e) {
+      e.preventDefault();
+      const role = document.getElementById("auth-role").value;
+      const name = document.getElementById("auth-name").value.trim();
+      const email = document.getElementById("auth-email").value.trim().toLowerCase();
+      const nisn = document.getElementById("auth-nisn")?.value.trim() || "";
+
+      const db = getDB();
+      let user = db.users.find(u => u.email.toLowerCase() === email);
+
+      if (!user) {
+        // Buat Akun Baru
+        user = {
+          email,
+          name,
+          role,
+          photo: "",
+          portfolio: [],
+          schedules: []
+        };
+        if (role === "guru_bk") {
+          user.isAlsoCounselor = false;
+          user.rooms = [
+            { id: "R1", name: "Kelas X-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R2", name: "Kelas X-2", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R3", name: "Kelas XI-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R4", name: "Kelas XI-2", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` },
+            { id: "R5", name: "Kelas XII-1", code: `KIRANA-${Math.floor(1000 + Math.random() * 9000)}` }
+          ];
+        } else if (role === "siswa") {
+          user.nisn = nisn;
+          user.joinedRoomCode = "";
+          user.points = 100;
+          user.pointHistory = [{ date: new Date().toISOString().split("T")[0], change: "+100", reason: "Poin awal selamat datang", by: "Sistem" }];
+          user.peerPhotos = [];
+          user.assessmentResults = {};
+        } else if (role === "konselor") {
+          user.counselorBio = "Menyediakan layanan konseling empatik dan berbasis bukti.";
+          user.counselorRate = "Rp 150.000 / Sesi";
+        } else if (role === "klien") {
+          user.assessmentResults = {};
+        }
+
+        db.users.push(user);
+        saveDB(db);
+        showToast("Akun baru berhasil didaftarkan!", "user-plus");
+      } else {
+        showToast(`Selamat datang kembali, ${user.name}!`, "check-circle");
+      }
+
+      setCurrentUser(user.email);
+      navigateTo("home");
+    }
+
+    function logout() {
+      clearSession();
+      showToast("Berhasil keluar dari akun.", "log-out");
+      navigateTo("home");
+    }
+
+    // --- PROFIL & HAPUS AKUN ---
+    function renderProfileView(container, user) {
+      const avatar = user.photo || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=8D6E63&textColor=FDFBF7`;
+      
+      container.innerHTML = `
+        <div class="max-w-2xl mx-auto bg-cream-100 p-8 rounded-2xl border border-cream-300 shadow-sm space-y-6
